@@ -1,0 +1,46 @@
+<dialog #dialog aria-labelledby="add-product-title" (cancel)="cancel($event)">
+  <header><h2 id="add-product-title">Adicionar produto</h2><button type="button" class="close" aria-label="Fechar" [disabled]="busy() || creatingCategory()" (click)="close()">×</button></header>
+  <form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="busy()">
+    <fieldset [disabled]="busy() || creatingCategory()">
+      <label for="new-name">Nome do produto</label>
+      <input id="new-name" formControlName="nome" placeholder="Ex.: Leite integral, Azeite, Sabonete..." autofocus />
+      @if (form.controls.nome.touched && form.controls.nome.invalid) { <p class="error">Informe o nome do produto.</p> }
+      <span class="label" id="category-label">Categoria</span>
+      <div class="category-dropdown" (focusout)="onCategoryFocusOut($event)" (keydown.escape)="closeCategoryMenu($event)">
+        <button #categoryTrigger type="button" class="category-trigger" aria-labelledby="category-label category-value" aria-controls="category-options" [attr.aria-expanded]="categoryOpen()" (click)="categoryOpen.set(!categoryOpen())">
+          <span id="category-value">{{ selectedCategoryName() }}</span><app-icon name="chevron-down" class="chevron" [class.open]="categoryOpen()" />
+        </button>
+        @if (categoryOpen()) {
+          <div id="category-options" class="category-options" role="group" aria-labelledby="category-label">
+            @for (categoria of categorias(); track categoria.id) {
+              <button type="button" [class.selected]="form.controls.categoriaId.value === categoria.id" [attr.aria-pressed]="form.controls.categoriaId.value === categoria.id" (click)="selectCategory(categoria.id)">{{ categoria.nome }}<span aria-hidden="true">{{ form.controls.categoriaId.value === categoria.id ? '✓' : '' }}</span></button>
+            }
+            <button type="button" class="create-option" (click)="selectCategory('__new__')">+ Criar nova categoria</button>
+          </div>
+        }
+      </div>
+      @if (form.controls.categoriaId.value === '__new__') {
+        <div class="new-category">
+          <label for="new-category-name">Nome da nova categoria</label>
+          <div class="category-input-row">
+            <input id="new-category-name" [formControl]="categoryName" maxlength="80" placeholder="Ex.: Hortifruti, Pet..." (keydown.enter)="$event.preventDefault(); createCategory()" />
+            <button type="button" (click)="createCategory()" [disabled]="creatingCategory()">{{ creatingCategory() ? 'Criando...' : 'Criar' }}</button>
+          </div>
+          @if (categoryName.touched && categoryName.invalid) { <p class="error">Informe um nome com até 80 caracteres.</p> }
+        </div>
+      }
+      @if (categoryError()) { <p class="error" role="alert">{{ categoryError() }}</p> }
+      <span class="label" id="unit-label">Unidade</span>
+      <div class="units" role="group" aria-labelledby="unit-label">
+        @for (unit of units; track unit) { <button type="button" [class.selected]="form.controls.unidade.value === unit" [attr.aria-pressed]="form.controls.unidade.value === unit" (click)="form.controls.unidade.setValue(unit)">{{ unit }}</button> }
+      </div>
+      <div class="quantities">
+        <section><label for="new-current">Quantidade atual</label><p>Temos agora</p><div class="stepper"><button type="button" [disabled]="form.controls.quantidadeAtual.value <= 0" (click)="step('quantidadeAtual', -1)" aria-label="Diminuir quantidade atual">−</button><div><input id="new-current" type="number" min="0" max="999999999.999" step="0.001" formControlName="quantidadeAtual" /><small>{{ form.controls.unidade.value }}</small></div><button type="button" class="plus" (click)="step('quantidadeAtual', 1)" aria-label="Aumentar quantidade atual">+</button></div></section>
+        <section><label for="new-desired">Qtd. desejada</label><p>Meta da casa</p><div class="stepper"><button type="button" [disabled]="form.controls.quantidadeDesejada.value <= 0" (click)="step('quantidadeDesejada', -1)" aria-label="Diminuir quantidade desejada">−</button><div><input id="new-desired" type="number" min="0" max="999999999.999" step="0.001" formControlName="quantidadeDesejada" /><small>{{ form.controls.unidade.value }}</small></div><button type="button" class="plus" (click)="step('quantidadeDesejada', 1)" aria-label="Aumentar quantidade desejada">+</button></div></section>
+      </div>
+      @if (form.touched && form.invalid) { <p class="error" role="alert">Preencha os campos. Use quantidades de 0 a 999999999,999, com até 3 casas decimais.</p> }
+      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+      <button class="submit" type="submit" [disabled]="busy() || creatingCategory() || form.controls.categoriaId.value === '__new__'">{{ busy() ? 'Adicionando...' : 'Adicionar ao estoque' }}</button>
+    </fieldset>
+  </form>
+</dialog>

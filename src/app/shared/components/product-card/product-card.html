@@ -1,0 +1,38 @@
+<article [attr.aria-busy]="busy()">
+  <div class="product-row">
+    <div class="description">
+      <div class="title-row">
+        <h3>{{ produto().nome }}</h3>
+        <button type="button" class="edit" [disabled]="busy()" [attr.aria-label]="'Editar ' + produto().nome" (click)="edit()"><app-icon name="pencil" /></button>
+        @if (produto().situacao !== 'EM_DIA') {
+          <span class="status" [class.missing]="produto().situacao === 'EM_FALTA'">
+            <app-icon name="warning" />{{ produto().situacao === 'EM_FALTA' ? 'Em falta' : 'Estoque baixo' }}
+          </span>
+        }
+      </div>
+      <p class="metadata">Desejado: {{ format(produto().quantidadeDesejada) }} {{ produto().unidade }} <span>·</span> Últ. por {{ produto().atualizadoPorNome }}</p>
+    </div>
+    <div class="quantity-controls">
+      <button type="button" class="quantity minus" [disabled]="busy() || editing() || produto().quantidadeAtual < 1" [attr.aria-label]="'Diminuir uma unidade de ' + produto().nome" (click)="adjust.emit(-1)">−</button>
+      <div class="balance" [class.low]="produto().situacao === 'BAIXO'" [class.missing]="produto().situacao === 'EM_FALTA'" aria-live="polite"><strong>{{ format(produto().quantidadeAtual) }}</strong><small>{{ produto().unidade }}</small></div>
+      <button type="button" class="quantity plus" [disabled]="busy() || editing() || produto().quantidadeAtual > 999999998.999" [attr.aria-label]="'Adicionar uma unidade de ' + produto().nome" (click)="adjust.emit(1)">+</button>
+    </div>
+  </div>
+  @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+  @if (editing()) {
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <fieldset [disabled]="busy()">
+        <legend>Editar produto</legend>
+        <label>Nome<input formControlName="nome" required /></label>
+        <label>Categoria<select formControlName="categoriaId">@for (categoria of categorias(); track categoria.id) { <option [value]="categoria.id">{{ categoria.nome }}</option> }</select></label>
+        <label>Unidade<input formControlName="unidade" required placeholder="Ex.: pacote, kg, litro" /></label>
+        <div class="amount-fields">
+          <label>Quantidade atual<input formControlName="quantidadeAtual" type="number" min="0" max="999999999.999" step="0.001" required /></label>
+          <label>Mínimo desejado<input formControlName="quantidadeDesejada" type="number" min="0" max="999999999.999" step="0.001" required /></label>
+        </div>
+        @if (form.touched && form.invalid) { <p class="error" role="alert">Preencha todos os campos. As quantidades devem ser positivas ou zero, com até 9 dígitos inteiros e 3 casas decimais.</p> }
+        <div class="actions"><button class="cancel" type="button" (click)="editing.set(false)">Cancelar</button><button type="submit">{{ busy() ? 'Salvando...' : 'Salvar alterações' }}</button></div>
+      </fieldset>
+    </form>
+  }
+</article>
