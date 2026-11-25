@@ -1,0 +1,186 @@
+<main class="auth-shell">
+  <header class="brand">
+    <div class="brand-icon"><app-icon name="home" /></div>
+    <h1>Aqui em Casa</h1>
+    <p>
+      Saiba o que tem na despensa e organize as<br class="wide" />
+      compras junto com quem mora com você.
+    </p>
+  </header>
+  <nav class="tabs" aria-label="Acesso à conta">
+    <button
+      type="button"
+      [class.active]="mode() === 'login'"
+      [attr.aria-pressed]="mode() === 'login'"
+      [disabled]="busy()"
+      (click)="changeMode('login')"
+    >
+      Entrar
+    </button>
+    <button
+      type="button"
+      [class.active]="mode() === 'register'"
+      [attr.aria-pressed]="mode() === 'register'"
+      [disabled]="busy()"
+      (click)="changeMode('register')"
+    >
+      Criar conta
+    </button>
+  </nav>
+  <section class="card" [attr.aria-busy]="busy()">
+    <h2>{{ mode() === 'login' ? 'Bem-vindo(a) de volta' : 'Criar sua conta' }}</h2>
+    <p class="description">
+      {{
+        mode() === 'login'
+          ? 'Entre com seu e-mail e senha para abrir o estoque da sua casa.'
+          : 'Escolha se você vai cadastrar uma casa nova ou entrar com convite.'
+      }}
+    </p>
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <fieldset [disabled]="busy()">
+        @if (mode() === 'register') {
+          <div class="choices" role="group" aria-label="Tipo de cadastro">
+            <button
+              type="button"
+              [class.selected]="!invite()"
+              [attr.aria-pressed]="!invite()"
+              (click)="changeInvite(false)"
+            >
+              <app-icon name="home" /><strong>Nova casa</strong
+              ><small>Sou a 1ª pessoa (Admin)</small>
+            </button>
+            <button
+              type="button"
+              [class.selected]="invite()"
+              [attr.aria-pressed]="invite()"
+              (click)="changeInvite(true)"
+            >
+              <app-icon name="users" /><strong>Tenho convite</strong
+              ><small>Casa já cadastrada</small>
+            </button>
+          </div>
+          <label for="nome">Seu nome</label>
+          <div class="input" [class.invalid]="invalid('nome')">
+            <app-icon name="user" /><input
+              id="nome"
+              formControlName="nome"
+              autocomplete="name"
+              placeholder="Ex.: Beatriz Souza"
+              [attr.aria-invalid]="invalid('nome')"
+            />
+          </div>
+          @if (invalid('nome')) {
+            <small class="error">Informe seu nome (até 150 caracteres).</small>
+          }
+        }
+        <label for="email">E-mail</label>
+        <div class="input" [class.invalid]="invalid('email')">
+          <app-icon name="mail" /><input
+            id="email"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            [placeholder]="mode() === 'login' ? 'seu@email.com.br' : 'voce@exemplo.com.br'"
+            [attr.aria-invalid]="invalid('email')"
+          />
+        </div>
+        @if (invalid('email')) {
+          <small class="error">Informe um e-mail válido.</small>
+        }
+        <div class="label-row">
+          <label for="senha">{{ mode() === 'login' ? 'Senha' : 'Crie uma senha' }}</label>
+          @if (mode() === 'login') {
+            <button type="button" class="text-button" (click)="forgot()">
+              Esqueci minha senha
+            </button>
+          }
+        </div>
+        <div class="input" [class.invalid]="invalid('senha')">
+          <app-icon name="key" /><input
+            id="senha"
+            formControlName="senha"
+            [type]="visible() ? 'text' : 'password'"
+            [autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'"
+            [placeholder]="
+              mode() === 'login'
+                ? 'Digite sua senha'
+                : invite()
+                  ? 'Mínimo de 8 caracteres'
+                  : 'Mínimo de 4 caracteres'
+            "
+            [attr.aria-invalid]="invalid('senha')"
+          /><button
+            class="eye"
+            type="button"
+            [attr.aria-label]="visible() ? 'Ocultar senha' : 'Mostrar senha'"
+            [attr.aria-pressed]="visible()"
+            (click)="visible.set(!visible())"
+          >
+            <app-icon name="eye" />
+          </button>
+        </div>
+        @if (invalid('senha')) {
+          <small class="error">{{
+            mode() === 'login'
+              ? 'Informe sua senha.'
+              : 'Use de ' + (invite() ? 8 : 4) + ' a 128 caracteres.'
+          }}</small>
+        }
+        @if (mode() === 'register') {
+          <hr />
+          @if (invite()) {
+            <label for="codigo">Código do convite da casa</label>
+            <div class="input" [class.invalid]="invalid('codigo')">
+              <app-icon name="ticket" /><input
+                id="codigo"
+                formControlName="codigo"
+                placeholder="Digite o código recebido"
+                autocapitalize="off"
+                [attr.aria-invalid]="invalid('codigo')"
+              />
+            </div>
+            @if (invalid('codigo')) {
+              <small class="error">Informe o código do convite (até 100 caracteres).</small>
+            }
+            <p class="hint">Use o convite enviado por um administrador da casa.</p>
+          } @else {
+            <label for="nomeCasa">Nome da casa</label>
+            <div class="input" [class.invalid]="invalid('nomeCasa')">
+              <app-icon name="home" /><input
+                id="nomeCasa"
+                formControlName="nomeCasa"
+                placeholder="Ex.: Casa das Acácias, Apê 42..."
+                [attr.aria-invalid]="invalid('nomeCasa')"
+              />
+            </div>
+            @if (invalid('nomeCasa')) {
+              <small class="error">Informe o nome da casa.</small>
+            }
+            <label class="sample"
+              ><input type="checkbox" disabled />
+              <span
+                >Iniciar com estoque de exemplo (leite, arroz, detergente)<small
+                  >Em breve</small
+                ></span
+              ></label
+            >
+          }
+        }
+        @if (message()) {
+          <p class="notice" role="alert">{{ message() }}</p>
+        }
+        <button type="submit" class="primary" [disabled]="busy()">
+          {{
+            busy()
+              ? 'Aguarde...'
+              : mode() === 'login'
+                ? 'Entrar na minha casa'
+                : invite()
+                  ? 'Criar conta e entrar na casa'
+                  : 'Criar conta e cadastrar casa'
+          }}<app-icon name="arrow" />
+        </button>
+      </fieldset>
+    </form>
+  </section>
+</main>
