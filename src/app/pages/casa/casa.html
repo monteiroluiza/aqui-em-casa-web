@@ -1,0 +1,52 @@
+<main>
+  <header class="page-header"><p>Aqui em Casa</p><h1>{{ casa()?.nome || 'Minha casa' }}</h1></header>
+  @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
+  @if (error()) { <div class="error" role="alert">{{ error() }} <button type="button" (click)="load()" [disabled]="loading() || busy()">Tentar novamente</button></div> }
+  @if (loading()) { <p class="muted" role="status">Carregando moradores...</p> }
+  @if (casa()) {
+    <section aria-labelledby="residents-title">
+      <div class="section-header"><h2 id="residents-title"><app-icon name="users" />Moradores ({{ moradores().length }})</h2>@if (admin()) { <button class="primary invite-button" type="button" (click)="openInvite()" [disabled]="busy() || loading()"><app-icon name="user-plus" />Convidar morador</button> }</div>
+      <div class="card">
+        @for (morador of moradores(); track morador.id) {
+          <article class="resident">
+            <div class="resident-row"><span class="avatar" aria-hidden="true">{{ initials(morador.nome) }}</span><div class="identity"><div class="name-row"><h3>{{ morador.nome }}</h3><span class="role" [class.admin]="morador.papel === 'ADMINISTRADOR'">{{ morador.papel === 'ADMINISTRADOR' ? 'Administrador' : 'Morador' }}</span></div><p>{{ morador.email }}</p></div>
+              @if (canRemove(morador)) { <button class="danger text" type="button" [disabled]="busy()" (click)="removing.set(morador.id)"><app-icon name="trash" />Remover</button> }
+            </div>
+            @if (removing() === morador.id) { <div class="confirmation" role="group" [attr.aria-label]="'Confirmar remoção de ' + morador.nome"><span>Remover acesso de {{ morador.nome }}?</span><div><button class="secondary" type="button" [disabled]="busy()" (click)="removing.set(null)">Cancelar</button><button class="danger-solid" type="button" [disabled]="busy()" (click)="remove(morador)">{{ busy() ? 'Removendo...' : 'Confirmar' }}</button></div></div> }
+          </article>
+        } @empty { @if (!loading()) { <p class="empty">Nenhum morador encontrado.</p> } }
+      </div>
+    </section>
+    @if (admin()) {
+      <section aria-labelledby="invites-title"><div class="section-header"><h2 id="invites-title"><app-icon name="mail" />Convites pendentes ({{ pendentes().length }})</h2></div>
+        @if (inviteError()) { <div class="error" role="alert">{{ inviteError() }} <button type="button" (click)="loadInvites()" [disabled]="busy() || loadingInvites()">Tentar novamente</button></div> }
+        @if (loadingInvites()) { <p class="muted" role="status">Carregando convites...</p> }
+        @for (convite of pendentes(); track convite.id) {
+          <article class="card invitation"><div class="invitation-row"><div class="identity"><h3>{{ convite.email }}</h3><p>Aguardando aceitação</p></div><button class="danger text" type="button" [disabled]="busy()" (click)="cancelling.set(convite.id)">Cancelar</button></div>
+            @if (cancelling() === convite.id) { <div class="confirmation"><span>Cancelar este convite?</span><div><button class="secondary" type="button" [disabled]="busy()" (click)="cancelling.set(null)">Voltar</button><button class="danger-solid" type="button" [disabled]="busy()" (click)="cancel(convite)">Confirmar</button></div></div> }
+          </article>
+        } @empty { @if (!loadingInvites() && !inviteError()) { <div class="card empty"><app-icon name="mail" /><h3>Nenhum convite pendente</h3><p>Convide alguém para organizar a casa com você.</p></div> } }
+        @if (created(); as invitation) {
+          <div class="card invitation code"><h3>Convite criado para {{ invitation.email }}</h3><label for="created-code">Código do convite</label><input #codeInput id="created-code" readonly [value]="invitation.codigo" /><button class="secondary" type="button" [disabled]="copying()" (click)="copyCode(codeInput)">{{ copying() ? 'Copiando...' : 'Copiar código' }}</button><p class="muted" role="status" aria-live="polite">{{ copyStatus() }}</p><p class="muted code-hint">Copie o código antes de sair desta tela.</p></div>
+        }
+      </section>
+    }
+  } @else if (!loading() && !error()) { <div class="card empty"><app-icon name="home" /><h3>Nenhuma casa disponível</h3><p>Você ainda não possui vínculo ativo com uma casa.</p></div> }
+  <div class="account-actions">
+    <button class="logout-button" type="button" [disabled]="leaving() || busy()" (click)="logout()">
+      <app-icon name="logout" />
+      {{ leaving() ? 'Saindo...' : 'Sair da conta (voltar para Login e Cadastro)' }}
+    </button>
+  </div>
+</main>
+<app-footer activeSection="casa" [houseCount]="pendentes().length" />
+@if (showInvite()) {
+  <app-modal title="Convidar morador" [busy]="busy()" (closed)="showInvite.set(false)">
+    <form [formGroup]="form" (ngSubmit)="invite()"><fieldset [disabled]="busy()"><label for="invite-email">E-mail da pessoa convidada</label><input id="invite-email" type="email" formControlName="email" placeholder="Ex.: pedro@exemplo.com.br" autocomplete="email" />
+      @if (form.controls.email.touched && form.controls.email.invalid) { <p class="error" role="alert">Informe um e-mail válido com até 254 caracteres.</p> }
+      <p class="muted">Crie um convite para compartilhar o acesso à sua casa. O código ficará disponível após a confirmação.</p>
+      @if (modalError()) { <p class="error" role="alert">{{ modalError() }}</p> }
+      <button type="submit" class="primary full">{{ busy() ? 'Criando convite...' : 'Criar convite para ' + casa()?.nome }}</button>
+    </fieldset></form>
+  </app-modal>
+}

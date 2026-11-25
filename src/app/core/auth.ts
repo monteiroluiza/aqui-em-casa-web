@@ -1,11 +1,12 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { CanActivateFn, Router } from '@angular/router';
-import { catchError, map, of, tap, throwError } from 'rxjs';
+import { catchError, map, of, switchMap, tap, throwError } from 'rxjs';
 export const API = '/api';
 interface Token { email: string; accessToken: string; expiresIn: number; tokenType: string }
 interface Session extends Token { expiresAt: number }
 export interface Casa { casaId: string; nome: string; membroId: string; papel: string }
+export interface CasaCriada { usuarioId: string; casaId: string; membroId: string; listaId: string; papel: string }
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
@@ -30,19 +31,30 @@ export class AuthService {
     }));
   }
   validate() { return this.http.get<{ email: string }>(`${API}/auth/sessao`); }
-  casas() { return this.http.get<Casa[]>(`${API}/casas`); }
+  selectCasa(id: string) { try { sessionStorage.setItem('aqui-em-casa.selected-house', id); } catch {} }
+  casas() { return this.http.get<Casa[]>(API + '/casas').pipe(map(casas => {
+    let selected: string | null = null;
+    try { selected = sessionStorage.getItem('aqui-em-casa.selected-house'); } catch {}
+    return [...casas].sort((a, b) => Number(b.casaId === selected) - Number(a.casaId === selected));
+  })); }
   register(data: { nome: string; email: string; senha: string; nomeCasa: string }) { return this.http.post(`${API}/cadastros/nova-casa`, data); }
-  accept(data: { nome: string; email: string; senha: string; codigo: string }) { return this.http.post(`${API}/convites/aceitar`, data); }
+  createCasa(nomeCasa: string) { return this.http.post<CasaCriada>(`${API}/casas`, { nomeCasa }).pipe(tap(casa => this.selectCasa(casa.casaId))); }
+  accept(data: { nome: string; email: string; senha: string; codigo: string }) { return this.http.post<{ casaId: string; email: string }>(`${API}/convites/aceitar`, data); }
   logout() { return this.http.post<void>(`${API}/auth/logout`, {}); }
   clear() {
     this.session.set(null);
-    try { sessionStorage.removeItem(this.key); } catch { /* Storage may be unavailable. */ }
+    try { sessionStorage.removeItem(this.key); sessionStorage.removeItem('aqui-em-casa.selected-house'); } catch { /* Storage may be unavailable. */ }
   }
 }
 export const authGuard: CanActivateFn = (_, state) => {
   const auth = inject(AuthService), router = inject(Router);
   if (!auth.token()) return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
-  return auth.validate().pipe(map(() => true), catchError((error: HttpErrorResponse) => {
+  return auth.validate().pipe(switchMap(() => auth.casas()), map(casas => {
+    const setup = state.url.split('?')[0] === '/criar-casa';
+    if (!casas.length && !setup) return router.createUrlTree(['/criar-casa']);
+    if (casas.length && setup) return router.createUrlTree(['/inicio']);
+    return true;
+  }), catchError((error: HttpErrorResponse) => {
     if (error.status === 401) auth.clear();
     return of(router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url, reason: error.status === 401 ? 'expired' : 'unavailable' } }));
   }));

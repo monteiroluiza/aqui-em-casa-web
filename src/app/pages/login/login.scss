@@ -292,3 +292,7 @@ button:disabled {
     padding-top: 12px;
   }
 }
+
+.invite-entry { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; margin: 0 0 18px; border: 1px solid var(--color-selected-border); border-radius: 12px; background: var(--color-selected-background); color: var(--color-primary); font-size: 14px; font-weight: 600; }
+.invite-entry app-icon:last-child { margin-left: auto; }
+.invite-summary { display: flex; justify-content: space-between; gap: 10px; padding: 10px; margin-bottom: 12px; border-radius: 8px; background: var(--color-selected-background); color: var(--color-primary); font-size: 12px; }

@@ -7,6 +7,9 @@ import { Component, input } from '@angular/core';
 export class Icon {
   name = input('home');
   paths: Record<string, string> = {
+    logout: 'M9 3H4v18h5M9 12h12m-5-5 5 5-5 5',
+    'user-plus': 'M14 7a4 4 0 1 0-8 0 4 4 0 0 0 8 0M3 21v-3a7 7 0 0 1 14 0v3M20 7v6m-3-3h6',
+    trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7',
     'chevron-down': 'M6 9l6 6 6-6',
     list: 'M4 5h16M4 12h8M4 19h8m5-10v10m-5-5h10',
     pencil: 'M15 4l5 5M3 21l5-1L21 7a2 2 0 0 0-5-5L3 15v6Z',

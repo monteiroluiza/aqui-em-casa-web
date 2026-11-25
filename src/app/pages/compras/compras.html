@@ -1,0 +1,363 @@
+<main>
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Lista compartilhada · {{ casa()?.nome || 'Minha casa' }}</p>
+      <h1>Compras da Casa</h1>
+    </div>
+    <span class="pill">{{ lista()?.itens?.length || 0 }} itens</span>
+  </header>
+  @if (error()) {
+    <div class="message error" role="alert">
+      {{ error() }}
+      <button type="button" (click)="retry()" [disabled]="busy() || loading()">Recarregar</button>
+    </div>
+  }
+  @if (notice()) {
+    <p class="message success" role="status">{{ notice() }}</p>
+  }
+  @if (loading()) {
+    <p class="loading" role="status">Atualizando lista...</p>
+  }
+  @if (casa() && lista()) {
+    <section class="actions card">
+      <button
+        class="primary generate"
+        type="button"
+        (click)="generate()"
+        [disabled]="busy() || loading()"
+      >
+        <app-icon name="list" />Gerar lista de compras<span class="pill"
+          >{{ suggestions() }} sugestões</span
+        >
+      </button>
+      @if (!manual()) {
+        <button
+          class="secondary full"
+          type="button"
+          (click)="manual.set(true)"
+          [disabled]="busy() || loading()"
+        >
+          + Adicionar item manualmente
+        </button>
+      } @else {
+        <form class="manual" [formGroup]="form" (ngSubmit)="addManual()">
+          <fieldset [disabled]="busy() || loading()">
+            <div class="section-title">
+              <strong>Novo item na lista</strong
+              ><button class="text" type="button" (click)="manual.set(false); unitOpen.set(false)">Cancelar</button>
+            </div>
+            <input
+              formControlName="nome"
+              aria-label="Nome do item"
+              placeholder="Ex.: Pão francês, Tomate, Amaciante..."
+            />
+            <div class="manual-quantity">
+              <div class="stepper">
+                <button
+                  type="button"
+                  (click)="stepManual(-1)"
+                  [disabled]="form.controls.quantidade.value <= 1"
+                  aria-label="Diminuir quantidade"
+                >
+                  −</button
+                ><input
+                  type="number"
+                  min="0.001"
+                  step="0.001"
+                  max="999999999.999"
+                  formControlName="quantidade"
+                  aria-label="Quantidade"
+                /><button
+                  type="button"
+                  class="plus"
+                  (click)="stepManual(1)"
+                  aria-label="Aumentar quantidade"
+                >
+                  +
+                </button>
+              </div>
+              <div class="unit-dropdown" (focusout)="unitFocusOut($event)" (keydown.escape)="closeUnits($event, unitTrigger)">
+                <button #unitTrigger type="button" class="unit-trigger" [attr.aria-label]="'Unidade: ' + form.controls.unidade.value" aria-controls="purchase-unit-options" [attr.aria-expanded]="unitOpen()" (click)="unitOpen.set(!unitOpen())">
+                  <span>{{ form.controls.unidade.value }}</span><app-icon name="chevron-down" [class.open]="unitOpen()" />
+                </button>
+                @if (unitOpen()) {
+                  <div id="purchase-unit-options" class="unit-options" role="group" aria-label="Unidade">
+                    @for (unit of units; track unit) {
+                      <button type="button" [class.selected]="form.controls.unidade.value === unit" [attr.aria-pressed]="form.controls.unidade.value === unit" (click)="form.controls.unidade.setValue(unit); unitOpen.set(false); unitTrigger.focus()">{{ unit }}<span aria-hidden="true">{{ form.controls.unidade.value === unit ? '✓' : '' }}</span></button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="category-options" role="group" aria-label="Categoria">
+              @for (category of categorias(); track category.id) {
+                <button
+                  type="button"
+                  [class.selected]="form.controls.categoriaId.value === category.id"
+                  [attr.aria-pressed]="form.controls.categoriaId.value === category.id"
+                  (click)="form.controls.categoriaId.setValue(category.id)"
+                >
+                  {{ category.nome }}
+                </button>
+              }
+            </div>
+            @if (!categorias().length) {
+              <p class="error">
+                Crie uma categoria no cadastro de produtos para incluir um item avulso.
+              </p>
+            }
+            @if (form.touched && form.invalid) {
+              <p class="error">
+                Informe nome, categoria e quantidade maior que zero, com até 3 casas decimais.
+              </p>
+            }
+            <button type="submit" class="primary full" [disabled]="form.invalid">
+              {{ busy() ? 'Incluindo...' : 'Incluir na lista' }}
+            </button>
+          </fieldset>
+        </form>
+      }
+    </section>
+    @if (!lista()!.itens.length && !loading()) {
+      <section class="empty card">
+        <app-icon name="cart" />
+        <h2>Sua lista de compras está vazia</h2>
+        <p>
+          Toque em <strong>Gerar lista de compras</strong> acima para buscar automaticamente o que
+          está em falta ou com estoque baixo.
+        </p>
+      </section>
+    }
+    @for (
+      section of [
+        { title: 'Falta pegar', items: pendentes(), cart: false },
+        { title: 'No carrinho', items: carrinho(), cart: true },
+      ];
+      track section.title
+    ) {
+      @if (section.items.length) {
+        <section class="items-section">
+          <div class="section-title">
+            <h2>{{ section.title }} ({{ section.items.length }})</h2>
+            <small>{{
+              section.cart
+                ? 'Pronto para somar ao estoque'
+                : 'Toque na caixa ao colocar no carrinho'
+            }}</small>
+          </div>
+          <div class="card items" [class.in-cart]="section.cart">
+            @for (item of section.items; track item.id) {
+              <article class="item">
+                <label class="purchase-checkbox">
+                  <input
+                  type="checkbox"
+                  [checked]="section.cart"
+                  [disabled]="busy() || loading()"
+                  [attr.aria-label]="
+                    (section.cart ? 'Retirar do carrinho: ' : 'Colocar no carrinho: ') + item.nome
+                  "
+                  (change)="toggle(item)"
+                />
+                  <span class="check-mark" aria-hidden="true"></span>
+                </label>
+                <div class="item-name">
+                  <h3 [class.checked]="section.cart">{{ item.nome }}</h3>
+                  <small>{{
+                    section.cart
+                      ? 'No carrinho · +' + fmt(item.quantidade) + ' ' + item.unidade
+                      : item.categoria.nome
+                  }}</small>
+                </div>
+                <div class="stepper">
+                  <button
+                    type="button"
+                    [disabled]="busy() || loading() || item.quantidade <= 1"
+                    (click)="quantity(item, -1)"
+                    [attr.aria-label]="'Diminuir ' + item.nome"
+                  >
+                    −
+                  </button>
+                  <div class="amount">
+                    <strong>{{ fmt(item.quantidade) }}</strong
+                    ><small>{{ item.unidade }}</small>
+                  </div>
+                  <button
+                    class="plus"
+                    type="button"
+                    [disabled]="busy() || loading() || item.quantidade > 999999998.999"
+                    (click)="quantity(item, 1)"
+                    [attr.aria-label]="'Aumentar ' + item.nome"
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  class="delete"
+                  type="button"
+                  [disabled]="busy() || loading()"
+                  (click)="remove(item)"
+                  [attr.aria-label]="'Remover ' + item.nome"
+                >
+                  <app-icon name="trash" />
+                </button>
+              </article>
+            }
+          </div>
+        </section>
+      }
+    }
+    @if (carrinho().length) {
+      <div class="finish-bar card">
+        <button
+          class="primary full"
+          type="button"
+          [disabled]="busy() || loading()"
+          (click)="finish()"
+        >
+          ✓ Concluir compra ({{ carrinho().length }}
+          {{ carrinho().length === 1 ? 'item comprado' : 'itens comprados' }})
+        </button>
+      </div>
+    }
+  } @else if (!loading() && !error()) {
+    <section class="empty card">
+      <h2>Nenhuma casa disponível</h2>
+      <p>Você precisa estar vinculado a uma casa para acessar as compras.</p>
+    </section>
+  }
+</main>
+<app-footer activeSection="compras" [stockCount]="shortage()" />
+@if (preview()) {
+  <app-modal title="Prévia da lista de compras" [busy]="busy()" (closed)="preview.set(null)">
+    <div class="modal-body">
+      <p style="margin-top: -.6rem;">
+        Calculamos o que falta para atingir a quantidade desejada da casa, considerando o que já
+        está na lista. Desmarque ou ajuste antes de confirmar.
+      </p>
+      @for (item of choices(); track item.produtoId) {
+        <article class="suggestion card" [class.unselected]="!item.selected">
+          <div class="suggestion-title">
+            <label class="purchase-checkbox">
+              <input
+                type="checkbox"
+                [checked]="item.selected"
+                [disabled]="busy()"
+                (change)="choose(item.produtoId, !item.selected)"
+                [attr.aria-label]="'Selecionar ' + item.nome"
+              />
+              <span class="check-mark" aria-hidden="true"></span>
+            </label>
+            <div class="suggestion-details">
+              <h3>{{ item.nome }}</h3>
+              @if (stock(item.produtoId); as product) {
+                <small
+                  >Temos <strong>{{ fmt(product.quantidadeAtual) }}</strong> de
+                  <strong>{{ fmt(product.quantidadeDesejada) }} {{ item.unidade }}</strong></small
+                >
+              }
+            </div>
+            <span class="status" [class.missing]="stock(item.produtoId)?.situacao === 'EM_FALTA'">{{
+              stock(item.produtoId)?.situacao === 'EM_FALTA' ? 'Em falta' : 'Estoque baixo'
+            }}</span>
+            @if (item.quantidadeNaLista > 0) {
+              <span class="already-listed"
+                >Já está na lista ({{ fmt(item.quantidadeNaLista) }} {{ item.unidade }}) — não será
+                duplicado</span
+              >
+            }
+          </div>
+          <div class="suggestion-quantity">
+            <small>Sugestão de compra:</small>
+            <div class="stepper">
+              <button
+                type="button"
+                [disabled]="busy() || !item.selected || item.quantidade <= 1"
+                (click)="stepSuggestion(item.produtoId, -1)"
+                [attr.aria-label]="'Diminuir sugestão de ' + item.nome"
+              >
+                −
+              </button>
+              <strong>{{ fmt(item.quantidade) }} {{ item.unidade }}</strong>
+              <button
+                type="button"
+                class="plus"
+                [disabled]="busy() || !item.selected || item.quantidade > 999999998.999"
+                (click)="stepSuggestion(item.produtoId, 1)"
+                [attr.aria-label]="'Aumentar sugestão de ' + item.nome"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </article>
+      } @empty {
+        <p class="message success">
+          Nenhum novo item necessário. O estoque ou a lista já atendem às metas da casa.
+        </p>
+      }
+      @if (modalError()) {
+        <p class="message error" role="alert">{{ modalError() }}</p>
+      }
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" type="button" [disabled]="busy()" (click)="preview.set(null)">
+        Cancelar</button
+      ><button
+        class="primary"
+        type="button"
+        [disabled]="busy() || !selected().length"
+        (click)="confirmSuggestions()"
+      >
+        {{ busy() ? 'Confirmando...' : 'Confirmar ' + selected().length + ' itens na lista' }}
+      </button>
+    </div>
+  </app-modal>
+}
+@if (conclusion(); as result) {
+  <app-modal title="Concluir compra" [busy]="busy()" (closed)="conclusion.set(null)"
+    ><div class="modal-body">
+      <h3 class="eyebrow">Vai somar ao estoque ({{ result.compras.length }})</h3>
+      @for (item of result.compras; track item.itemIds[0]) {
+        <article class="purchase card">
+          <div>
+            <h3>{{ item.nome }}</h3>
+            <small
+              >Estoque: {{ fmt(item.saldoAtual) }} →
+              <strong>{{ fmt(item.saldoPrevisto) }} {{ item.unidade }}</strong></small
+            >
+            @if (item.novoProduto) {
+              <small>Novo produto no estoque</small>
+            }
+          </div>
+          <span class="pill">+{{ fmt(item.quantidadeComprada) }} {{ item.unidade }}</span>
+        </article>
+      }
+      <h3 class="eyebrow">Continuam pendentes na lista ({{ result.pendentes.length }})</h3>
+      @for (item of result.pendentes; track item.id) {
+        <div class="pending-row">
+          <span>{{ item.nome }}</span
+          ><small>{{ fmt(item.quantidade) }} {{ item.unidade }}</small>
+        </div>
+      }
+      <p>
+        Ao confirmar, os itens comprados serão somados automaticamente ao estoque da casa e os itens
+        não marcados continuarão na lista para a próxima ida ao mercado.
+      </p>
+      @if (modalError()) {
+        <p class="message error" role="alert">{{ modalError() }}</p>
+      }
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" type="button" [disabled]="busy()" (click)="conclusion.set(null)">
+        Voltar</button
+      ><button
+        class="primary"
+        type="button"
+        [disabled]="busy() || !result.compras.length"
+        (click)="confirmPurchase()"
+      >
+        {{ busy() ? 'Confirmando...' : '✓ Confirmar compra' }}
+      </button>
+    </div></app-modal
+  >
+}

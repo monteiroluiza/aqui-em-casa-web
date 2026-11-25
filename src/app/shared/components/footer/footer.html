@@ -7,7 +7,7 @@
         [class.active]="activeSection() === item.id"
         [attr.aria-pressed]="activeSection() === item.id"
         [attr.aria-label]="item.label + (count(item.id) ? ', ' + count(item.id) + ' notificações' : '')"
-        (click)="activeSection.set(item.id)"
+        (click)="navigate(item.id)"
       >
         <span class="icon-wrapper">
           <app-icon [name]="item.icon" />

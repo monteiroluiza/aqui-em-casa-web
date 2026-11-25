@@ -17,6 +17,19 @@ export class Login {
   private fb = inject(FormBuilder);
   mode = signal<'login' | 'register'>('login');
   invite = signal(false);
+  inviteStep = signal<'code' | 'account'>('code');
+  existingAccount = signal(false);
+  openInvite() { this.changeMode('register'); this.changeInvite(true); }
+  continueInvite() {
+    const code = this.registerForm.controls.codigo;
+    code.setValue(code.value.trim()); code.markAsTouched();
+    if (code.valid) this.inviteStep.set('account');
+  }
+  setExisting(value: boolean) {
+    this.existingAccount.set(value);
+    this.registerForm.controls.nome.setValidators(value ? [Validators.maxLength(150)] : [Validators.required, Validators.maxLength(150)]);
+    this.registerForm.controls.nome.updateValueAndValidity();
+  }
   visible = signal(false);
   busy = signal(false);
   message = signal(
@@ -47,6 +60,8 @@ export class Login {
   }
   changeInvite(invite: boolean) {
     this.invite.set(invite);
+    this.inviteStep.set('code');
+    this.setExisting(false);
     this.message.set('');
     this.registerForm.controls.nomeCasa.setValidators(invite ? [] : [Validators.required]);
     this.registerForm.controls.codigo.setValidators(
@@ -69,6 +84,7 @@ export class Login {
   }
   submit() {
     if (this.busy()) return;
+    if (this.mode() === 'register' && this.invite() && this.inviteStep() === 'code') { this.continueInvite(); return; }
     const fields =
       this.mode() === 'login'
         ? ['email']
@@ -94,7 +110,7 @@ export class Login {
                 email: data.email,
                 senha: data.senha,
                 codigo: data.codigo,
-              })
+              }).pipe(tap(response => this.auth.selectCasa(response.casaId)))
             : this.auth.register({
                 nome: data.nome,
                 email: data.email,
@@ -113,14 +129,14 @@ export class Login {
         this.registerForm.controls.senha.reset();
         const target = this.route.snapshot.queryParamMap.get('returnUrl');
         void this.router.navigateByUrl(
-          target && /^\/inicio(?:[/?#]|$)/.test(target) ? target : '/inicio',
+          target && /^\/(?:inicio|compras|casa)(?:[/?#]|$)/.test(target) ? target : '/inicio',
         );
       },
       error: (error) => {
         if (created) {
           this.changeMode('login');
           this.loginForm.controls.email.setValue(data.email);
-          this.message.set('Cadastro concluído! Entre com seu e-mail e senha para continuar.');
+          this.message.set(this.invite() ? 'Convite aceito! Entre com seu e-mail e senha para continuar.' : 'Cadastro concluído! Entre com seu e-mail e senha para continuar.');
         } else this.message.set(errorMessage(error));
       },
     });

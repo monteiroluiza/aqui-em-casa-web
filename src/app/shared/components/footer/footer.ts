@@ -1,4 +1,5 @@
-import { Component, input, model } from '@angular/core';
+import { Component, inject, input, model } from '@angular/core';
+import { Router } from '@angular/router';
 import { Icon } from '../../icon';
 
 export type FooterSection = 'estoque' | 'compras' | 'casa';
@@ -10,6 +11,10 @@ export type FooterSection = 'estoque' | 'compras' | 'casa';
   styleUrl: './footer.scss',
 })
 export class Footer {
+  private readonly router = inject(Router);
+  navigate(section: FooterSection) {
+    void this.router.navigateByUrl(section === 'casa' ? '/casa' : section === 'compras' ? '/compras' : '/inicio');
+  }
   readonly activeSection = model<FooterSection>('estoque');
   readonly stockCount = input(0);
   readonly houseCount = input(0);

@@ -1,0 +1,23 @@
+<main class="setup">
+  <header><span class="brand-icon"><app-icon name="home" /></span><h1>Aqui em Casa</h1></header>
+  <section class="card">
+    <h2>Crie sua casa</h2>
+    <p>Sua conta está ativa, mas você ainda não está vinculado a uma casa. Crie uma para começar a organizar seu estoque.</p>
+    <p class="account">Conectado como <strong>{{ auth.session()?.email }}</strong></p>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <fieldset [disabled]="busy()">
+        <label for="house-name">Nome da casa</label>
+        <input id="house-name" formControlName="nome" placeholder="Ex.: Apê das Acácias" maxlength="150" autocomplete="off" [attr.aria-invalid]="form.controls.nome.touched && form.controls.nome.invalid" aria-describedby="house-error" />
+        <small id="house-error">@if (form.controls.nome.touched && form.controls.nome.invalid) { Informe o nome da casa (até 150 caracteres). }</small>
+        <p class="hint">Você será administrador desta nova casa.</p>
+        @if (message()) { <p class="error" role="alert">{{ message() }}</p> }
+        @if (hasActiveCasa()) {
+          <a class="primary continue" routerLink="/inicio">Acessar estoque <app-icon name="arrow" /></a>
+        } @else {
+          <button class="primary" type="submit">{{ busy() ? 'Criando casa...' : 'Criar casa e continuar' }}<app-icon name="arrow" /></button>
+        }
+      </fieldset>
+    </form>
+  </section>
+  <button class="logout" type="button" [disabled]="busy()" (click)="logout()"><app-icon name="logout" />Sair da conta</button>
+</main>

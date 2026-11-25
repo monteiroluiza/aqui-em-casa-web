@@ -1,7 +1,7 @@
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY, finalize, forkJoin, of, Subject, switchMap, timer } from 'rxjs';
-import { ComprasService } from '../core/compras.service';
+import { Router } from '@angular/router';
 import { AddProduct } from '../shared/components/add-product/add-product';
 import { AuthService, Casa, errorMessage } from '../core/auth';
 import { AtualizarProduto, Categoria, EstoqueService, Produto } from '../core/estoque.service';
@@ -18,7 +18,7 @@ import { Icon } from '../shared/icon';
 export class Home {
   private readonly auth = inject(AuthService);
   private readonly estoque = inject(EstoqueService);
-  private readonly compras = inject(ComprasService);
+  private readonly router = inject(Router);
   readonly showAdd = signal(false);
   readonly adding = signal(false);
   readonly addError = signal('');
@@ -119,17 +119,7 @@ export class Home {
   }
 
   generateList() {
-    const casa = this.casa();
-    if (!casa || this.generating()) return;
-    this.generating.set(true);
-    this.actionMessage.set('');
-    this.actionError.set(false);
-    this.compras.gerar(casa.casaId).pipe(
-      takeUntilDestroyed(this.destroyRef), finalize(() => this.generating.set(false)),
-    ).subscribe({
-      next: message => this.actionMessage.set(message),
-      error: error => { this.actionError.set(true); this.actionMessage.set(errorMessage(error)); },
-    });
+    void this.router.navigate(['/compras'], { queryParams: { gerar: '1' } });
   }
 
   clearFilters() {
