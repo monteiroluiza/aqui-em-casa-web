@@ -1,0 +1,15 @@
+<main>
+  <header>
+    <p class="brand">Aqui em Casa</p>
+    <h1>{{ casa()?.nome || (loading() ? 'Carregando sua casa...' : 'Minha casa') }}</h1>
+  </header>
+  @if (message()) {
+    <div class="feedback" role="alert">
+      <p>{{ message() }}</p>
+      <button type="button" (click)="load()">Tentar novamente</button>
+    </div>
+  } @else if (!loading() && !casa()) {
+    <p class="feedback" role="status">Você ainda não possui vínculo ativo com uma casa.</p>
+  }
+</main>
+<app-footer />

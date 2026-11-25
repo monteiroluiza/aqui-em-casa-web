@@ -1,0 +1,24 @@
+<footer class="footer">
+  <nav aria-label="Navegação principal">
+    @for (item of items; track item.id) {
+      <button
+        type="button"
+        class="nav-item"
+        [class.active]="activeSection() === item.id"
+        [attr.aria-pressed]="activeSection() === item.id"
+        [attr.aria-label]="item.label + (count(item.id) ? ', ' + count(item.id) + ' notificações' : '')"
+        (click)="activeSection.set(item.id)"
+      >
+        <span class="icon-wrapper">
+          <app-icon [name]="item.icon" />
+          @if (count(item.id) > 0) {
+            <span class="badge" [class.badge-alert]="item.id === 'estoque'" aria-hidden="true">
+              {{ count(item.id) > 99 ? '99+' : count(item.id) }}
+            </span>
+          }
+        </span>
+        <span>{{ item.label }}</span>
+      </button>
+    }
+  </nav>
+</footer>
